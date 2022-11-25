@@ -1,65 +1,63 @@
-import asyncio
-import errno
-import os
 import time
-import httpx
+import aiohttp
+import asyncio
+import logging
+
+logging.basicConfig(filename='debug.log', encoding='utf-8', level=logging.DEBUG,
+                    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S', )
 
 
-def silent_remove(filename):
-    try:
-        os.remove(filename)
-    except OSError as e:  
-        if e.errno != errno.ENOENT:  # errno.ENOENT = no such file or directory
-            raise  # re-raise exception if a different error occurred
+def count_lines():
+    with open("routes.lst", 'r') as fp:
+        TODO: file_name from args
+        x = len(fp.readlines())
+    return x
 
 
-def save_to_file(link_list, filename):
-    silent_remove(filename)
-    with open(filename, mode='wt', encoding='utf-8') as result:
-        result.write('\n'.join(link_list))
-        result.write('\n')
-        result.close()
-    return 'ok'
+async def get_lines(lines_count, domain_name):
+    list_200 = list()
+    total = count_lines()
+    with open("routes.lst") as myfile:
+        TODO: file_name from args
+        final_list = list()
+        big_list = list()
+        for l in myfile:
+            big_list.append(l)
+        lines_start = 0
+        iter_size = lines_count
+        lines_end = lines_count
+        while lines_end <= total:
+            slice_lines = big_list[int(lines_start):int(lines_end)]
+            s_counter = lines_start
+            for s in slice_lines:
+                url = f"https://{domain_name}/{s.strip()}"
+                final_list.append(url)
+                s_counter += 1
+            lines_start = lines_end
+            lines_end += iter_size
+            try:
+                async with aiohttp.ClientSession() as session:
+                    for full_url in final_list:
+                        async with session.get(full_url) as resp:
+                            url_status = resp.status
+                            print(f"{url_status}\t\t{full_url}")
+                            if url_status == 200:
+                                list_200.append(f"200\t{full_url}")
+                                
+            except:
+                logging.error(f'ERROR: session.get(full_url)')
+            slice_lines.clear()
 
 
-def url_list_gen():
-    urls = ['https://google.com'] #First URL to check
+async def walk_list():
     with open("domains.lst") as domain_list:
+        time_start = time.perf_counter()
         for domain in domain_list:
-            domain = domain.strip()
-            with open("routes.lst") as file2:
-                for route in file2:
-                    route = route.strip()
-                    url = 'https://' + domain + '/' + route
-                    urls.append(url)
-    return urls
+            domain_name = domain.strip()
+            await get_lines(100, domain_name)
+        time_done = time.perf_counter()
+        print(f'Total time elapsed: {time_done - time_start:0.2f} seconds.')
 
 
-async def get_async(url):
-    async with httpx.AsyncClient() as client:
-        try:
-            print('Checking URL: ', url)
-            return await client.get(url, follow_redirects=False)
-        except httpx.RequestError as exc:
-            print(f"\t\tERROR occurred while requesting {exc.request.url!r}.")
-        except httpx.HTTPStatusError as exc:
-            print(f"\t\tERROR response {exc.response.status_code} while requesting {exc.request.url!r}.")
-        except:
-            print(f"Error sending request for ", url)
-
-
-async def launch():
-    tm1 = time.perf_counter()
-    list_200 = ['']
-    url_list = url_list_gen()
-    results = await asyncio.gather(*map(get_async, url_list))
-    for r in results:
-        if r.status_code == 200:
-            print('FOUND!\t\t' + r.request.url + '\t 200')
-            list_200.append(r.request.url + '\t 200')
-    save_to_file(list_200, 'results_200.txt')
-    tm2 = time.perf_counter()
-    print(f'Total time elapsed: {tm2 - tm1:0.2f} seconds')
-
-
-asyncio.run(launch())
+asyncio.run(walk_list())
