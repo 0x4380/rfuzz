@@ -2,7 +2,7 @@ import time
 import aiohttp
 import asyncio
 import logging
-
+# 861.71 seconds for 9*400 URLs
 logging.basicConfig(filename='debug.log', encoding='utf-8', level=logging.DEBUG,
                     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S', )
@@ -10,7 +10,7 @@ logging.basicConfig(filename='debug.log', encoding='utf-8', level=logging.DEBUG,
 
 def count_lines():
     with open("routes_small.lst", 'r') as fp:
-      # TODO: file_name from args
+        # TODO: file_name from args
         x = len(fp.readlines())
     return x
 
@@ -19,10 +19,10 @@ async def get_lines(lines_count, domain_name):
     list_200 = list()
     total = count_lines()
     with open("routes_small.lst") as routes_list:
-      # TODO: file_name from args
         final_list = list()
         big_list = list()
         for l in routes_list:
+            # TODO: file_name from args
             big_list.append(l)
         lines_start = 0
         iter_size = lines_count
@@ -42,19 +42,23 @@ async def get_lines(lines_count, domain_name):
     try:
         async with aiohttp.ClientSession() as session:
             for full_url in final_list:
-                async with session.get(full_url, allow_redirects=False, timeout=3) as resp:
-                    try:
-                        url_status = resp.status
-                        print(f"{url_status}\t\t{full_url}")
-                        if url_status == 200:
-                            logging.info('Found 200 status', full_url)
-                            list_200.append(f"200\t{full_url}")
-                    except:
-                        logging.error('No status', full_url)
-                        raise
+                try:
+                    async with session.get(full_url, allow_redirects=False, timeout=3) as resp:
+                        try:
+                            url_status = resp.status
+                            print(f"{url_status}\t\t{full_url}")
+                            if url_status == 200:
+                                logging.info('Found 200 status', full_url)
+                                list_200.append(f"200\t{full_url}")
+                        except:
+                            logging.error('No status', full_url)
+                            raise
+                except:
+                    logging.error('Failed session.get(full_url)', full_url)
+                    raise
 
     except:
-        logging.error(f' session.get(full_url)')
+        logging.error(f'Failed async with session')
         raise
     return list_200  # Do something
 
