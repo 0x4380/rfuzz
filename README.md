@@ -1,6 +1,6 @@
 # RFUZZ
 
-Multi-domain path fuzzer with built-in anti-tarpit protection.
+Multi-domain easy-customizable path fuzzer with built-in anti-tarpit protection.
 
 ---
 
